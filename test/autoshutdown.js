@@ -3,7 +3,6 @@ const path          = require("path");
 const assert        = require("chai").assert;
 const cp            = require("child_process");
 const util          = require("util");
-const parallel         = require("mocha.parallel");
 function exec(descr, run) { run(); }
 describe("autoShutdown", () => {
 
@@ -47,7 +46,7 @@ describe("autoShutdown", () => {
         }
     }
     const makeShutdown = makeMakeShutdown(autoshutdown.autoShutdown);
-    parallel("shutdown", () => {
+    describe("shutdown", () => {
         it("simple", async () => {
             const {promise, start} = makeShutdown();
             await promise;
@@ -67,7 +66,7 @@ describe("autoShutdown", () => {
             for(let i = 1; i < 5; ++i)
                 setTimeout(() => shutdown.resetTimer(), i * 50);
             await promise;
-            assertBetween(timeDiff(start), 95, 300);//sometimes goes down to 99 due to parallel exec
+            assertBetween(timeDiff(start), 95, 300);//sometimes goes down to 99 due to describe exec
         });
         it("stop", async () => {
             const {shutdown, promise, start} = makeShutdown();
@@ -139,7 +138,7 @@ describe("autoShutdown", () => {
     });
     const makeClient = makeMakeShutdown(autoshutdown.client);
 
-    parallel("client", () => {
+    describe("client", () => {
         it("simple", async () => {
             const {promise, start, shutdown} = makeClient();
             shutdown.start();
@@ -147,7 +146,7 @@ describe("autoShutdown", () => {
             assertBetween(timeDiff(start), 100, 300);
         });
     });
-    parallel("shutdown childprocess", () => {
+    describe("shutdown childprocess", () => {
         it("simple", async () => {
             const {time} = await exec(path.join(__dirname, "clients/simple-shutdown.js"));
             assertBetween(time, 100, 300);
@@ -159,7 +158,7 @@ describe("autoShutdown", () => {
         });
     });
 
-    parallel("client childprocess", () => {
+    describe("client childprocess", () => {
         it("simple", async () => {
             const {time} = await client(path.join(__dirname, "clients/simple-client.js"));
             assertBetween(time, 100, 300);
