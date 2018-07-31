@@ -1,6 +1,6 @@
 {
   "name":        "autostart-client",
-  "version":     "1.2.0",
+  "version":     "1.2.1",
   "description": "Client library for autostart-server, automatically exits process on inactivity.",
   "keywords":    "socket-activation auto-start auto-shutdown",
   "homepage":    "https://github.com/bredthau/autostart-client",
@@ -8,7 +8,6 @@
   "main":        "index.js",
   "author":      "bredthau",
   "license":     "MIT",
-  "files":       [],
   "scripts": {
     "test":     "mocha ./test/",
     "coverage": "istanbul cover node_modules/mocha/bin/_mocha -- ./test/"
