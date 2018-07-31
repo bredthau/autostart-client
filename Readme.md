@@ -66,9 +66,9 @@ as.attach(server, [checkTime, checkConnections], [clean], [() => server.removeLi
  
 Calling ``as.detach(server)`` afterwards would remove everything added with the attachment from ``as``, as well as executing the action to remove the ``request`` listener from ``server``.
 
-For ease of use the common use case of attaching a node http-server has been bundled into the ``as.attachServer(server)`` method, which behaves similar to the code example, although it uses the ``connect`` event in order to support ``net.Server`` too.
+##### Custom Attachments
 
-The ``autostart.Shutdown.registerAttachmentType(name, func)`` can be used to attach such prebuild attachment functions. It will add ``func`` under the name ``"attach"+name`` to the prototype of ``AutoShutDown``. An attachment function for websockets via ``ws`` could e.g. look kile the following:
+The ``autostart.Shutdown.registerAttachmentType(name, func)`` can be used to attach prebuild attachment functions. It will add ``func`` under the name ``"attach"+name`` to the prototype of ``AutoShutDown``. An attachment function for websockets via ``ws`` could e.g. look kile the following:
 
 ```js
 autostart.Shutdown.registerAttachmentType("WebSocket", function attachWebSocket(server) {
@@ -91,6 +91,20 @@ It would be called as:
 const ws = new WebSocket.Server({});
 as.attachWebSocket(ws);
 ```
+
+##### Prebuild attachments
+
+For ease of use the common use case of attaching a node http-server has been bundled into the ``as.attachServer(server)`` method, which behaves similar to the code example, although it uses the ``connect`` event in order to support ``net.Server`` too.
+
+Further predefined attachments can be activated by requiring files from  the ``attach`` subdirectory. Currently only the ``ws.js`` attachment is bundled, which registers an attachment named ``Websocket`` for websocket servers created using ``ws.js``.
+
+Example:
+```js
+require("autostart-client/attach/ws");
+const ws = new WebSocket.Server({});
+as.attachWebSocket(ws);
+```
+
 
 
 

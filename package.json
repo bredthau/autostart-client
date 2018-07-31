@@ -1,6 +1,6 @@
 {
   "name":        "autostart-client",
-  "version":     "1.1.0",
+  "version":     "1.2.0",
   "description": "Client library for autostart-server, automatically exits process on inactivity.",
   "keywords":    "socket-activation auto-start auto-shutdown",
   "homepage":    "https://github.com/bredthau/autostart-client",
