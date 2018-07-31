@@ -1,3 +1,4 @@
+"use strict";
 const http          = require("http");
 const path          = require("path");
 const assert        = require("chai").assert;
@@ -145,6 +146,14 @@ describe("autoShutdown", () => {
             await promise;
             assertBetween(timeDiff(start), 100, 300);
         });
+        it("isClient", async () => {
+            const {promise, start, shutdown} = makeClient();
+            assert.isNotOk(shutdown.isClient);
+            shutdown.start();
+            await promise;
+            assertBetween(timeDiff(start), 100, 300);
+        });
+
     });
     describe("shutdown childprocess", () => {
         it("simple", async () => {

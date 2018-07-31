@@ -1,3 +1,4 @@
+"use strict";
 const shutdown = require("../../index.js");
 process.send("started");
 const sd = shutdown.autoShutdown({timeout: 0.1});

@@ -1,3 +1,4 @@
+"use strict";
 const Data             = Symbol("Data");
 const ScheduleShutdown = Symbol("ScheduleTimeouts");
 const log = () => {};//console.log.bind(console);
@@ -87,14 +88,6 @@ class AutoShutdown {
         this[Data].attached.set(attachment, {checks, cleanups, actions});
         return this;
     }
-    attachServer(server) {
-        const onReq = () => this.resetTimer();
-        const check = () => new Promise((res, rej) => server.getConnections((err, cnt) => res(!err && cnt === 0)));
-        const clean = () => new Promise((res, rej) => server.close(() => res()));
-        server.on('connect', onReq);
-        server.on('request', onReq);
-        return this.attach(server, [check], [clean], [() => ["request", "connect"].map(event => server.removeListener(event, onReq))]);
-    }
     detach(attach) {
         const attached = this[Data].attached.get(attach);
         if(!attached)
@@ -105,16 +98,28 @@ class AutoShutdown {
         this[Data].attached.delete(attach);
         return this;
     }
+    static registerAttachmentType(name, func) {
+        AutoShutdown.prototype["attach"+name] = func;
+    }
 }
+AutoShutdown.registerAttachmentType("Server", function attachServer(server) {
+    const onReq = () => this.resetTimer();
+    const check = () => new Promise((res, rej) => server.getConnections((err, cnt) => res(!err && cnt === 0)));
+    const clean = () => new Promise((res, rej) => server.close(() => res()));
+    server.on('connect', onReq);
+    server.on('request', onReq);
+    return this.attach(server, [check], [clean], [() => ["request", "connect"].map(event => server.removeListener(event, onReq))]);
+});
 function isClient() { return !!process.send; }
 const ClientData = Symbol("ClientData");
 class AutoStartClient extends AutoShutdown {
     constructor(opts = {}) {
         super(opts);
-        const [socketP, dataP] = [defer(), defer()];
+        const [sockP, connP, dataP] = [defer(), defer(), defer()];
         this[ClientData] = {
             init:        defer(),
-            socket:      socketP.promise,
+            socket:      sockP.promise,
+            connections: connP.promise,
             data:        dataP.promise
         };
         this.stop();
@@ -124,7 +129,8 @@ class AutoStartClient extends AutoShutdown {
                 if(!m)
                     return;
                 if(m.type === "#asc-init") {
-                    socketP.resolve(m.src);
+                    sockP.resolve(m.src);
+                    connP.resolve(m.connections);
                     dataP.resolve(m.data || {});
                     this[ClientData].init.promise.then(() => this.start());
                 } else if(m.type === "#asc-exit")
@@ -134,9 +140,10 @@ class AutoStartClient extends AutoShutdown {
         if(!opts.deferInit)
            this.finishInitialization();
     }
-
-    get socket /* istanbul ignore next */ () { return this[ClientData].socket; }
-    get data   /* istanbul ignore next */ () { return this[ClientData].data; }
+    get isClient() { return isClient(); }
+    get socket /* istanbul ignore next */      () { return this[ClientData].socket; }
+    get connections /* istanbul ignore next */ () { return this[ClientData].connections; }
+    get data   /* istanbul ignore next */      () { return this[ClientData].data; }
     finishInitialization() {
         /* istanbul ignore if */
         if(isClient())
@@ -149,5 +156,7 @@ class AutoStartClient extends AutoShutdown {
 module.exports = {
     autoShutdown(opts) { return new AutoShutdown(opts); },
     client(opts)       { return new AutoStartClient(opts); },
-    exit: AutoShutdown.exit
+    exit: AutoShutdown.exit,
+    Shutdown: AutoShutdown,
+    Client: AutoStartClient
 };

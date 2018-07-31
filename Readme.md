@@ -4,7 +4,7 @@ This library isintended as a client for [autostart-server](https://npmjs.org/aut
 Autostart-Server is inspired by socket-activation via [node-systemd](https://github.com/rubenv/node-systemd), being a pure node implementation of the concept, which is useful for systems where ``systemd`` is not an option. It will create ``net.Servers`` listening to the the specified sockets and start the corresponding server apps on activity, forwarding all traffic to that app. 
 
 ## Installation
-This library requires __node v.6.5.0__ or higher for ES6 feature support.
+This library requires __node v.7.6.0__ or higher. In principle it should work with node versions since __node v.6.5.0__, however the tests use newer features, so use at your own risk.
 
 ```
 $ npm install autostart-client
@@ -67,6 +67,33 @@ as.attach(server, [checkTime, checkConnections], [clean], [() => server.removeLi
 Calling ``as.detach(server)`` afterwards would remove everything added with the attachment from ``as``, as well as executing the action to remove the ``request`` listener from ``server``.
 
 For ease of use the common use case of attaching a node http-server has been bundled into the ``as.attachServer(server)`` method, which behaves similar to the code example, although it uses the ``connect`` event in order to support ``net.Server`` too.
+
+The ``autostart.Shutdown.registerAttachmentType(name, func)`` can be used to attach such prebuild attachment functions. It will add ``func`` under the name ``"attach"+name`` to the prototype of ``AutoShutDown``. An attachment function for websockets via ``ws`` could e.g. look kile the following:
+
+```js
+autostart.Shutdown.registerAttachmentType("WebSocket", function attachWebSocket(server) {
+   let connections = 0;
+   const closeConnection = () => { this.resetTimer(); --connections; };
+   const onConnect = conn => {
+       this.resetTimer();
+       ++connections;
+       conn.on("close", closeConnection);
+   };
+   const check = () => connections === 0;
+   const clean = () => new Promise((res, rej) => server.close(() => res()));
+   server.on('connection', onConnect);
+   return this.attach(server, [check], [clean], [() => server.removeListener('connection', onConnect)]);
+});
+```
+
+It would be called as:
+```js
+const ws = new WebSocket.Server({});
+as.attachWebSocket(ws);
+```
+
+
+
  
 #### Manual controls
 For more finegrained control an ``AutoShutdown`` can be controlled manually. The ``as.stop()`` method will stop the timer so that no activity checks will be done anymore. ``as.start()`` can be used to restart the timer with and therefore restore control to the ``AutoShutdown``. Be advised that ``as.start()`` will not continue the previous interval, but start with the full ``timeout``. ``as.shutdown()`` can be used to manually trigger the cleanup independent of the current state of the timer.
@@ -89,5 +116,11 @@ An ``AutoStartClient`` is created using the ``autostart.client(options)`` functi
  
  An ``AutoStartClient`` has all the methods of an ``AutoShutdown``. However unlike a plain ``AutoShutdown`` the timeout will not necessarily start on construction. Instead it will wait until both the ``#asc-init`` event has been sent from the ``autostart-server`` and ``client.finishInitialization()`` has been called. Besides starting the timeout ``client.finishInitialization()`` will send the ``#asc-ready`` event to the ``autostart-server``, signalling that the process is ready to receive connections. This means that ``client.finishInitialization()`` should only be called when the app is fully started and listens to its socket.
  
+ ``AutoStartClients`` have the ``client.isClient`` property, which is a ``boolean`` indicating if the instance has been started as a client (via nodes ``child_process``) or not.
+ 
  #### Data
- ``AutoStartClient`` has two additional members ``client.socket`` and ``client.data``. Both are promises, which resolve to the data send from the server by the ``#asc-init`` event. ``client.socket`` resolves to the socket to which the autostart-server will forward its connections, while ``client.data`` contains further custom data coming from the app description.
+ ``AutoStartClient`` has the additional members ``client.socket``, ``client.connections`` and ``client.data``. All three are promises, which resolve to the data send from the server by the ``#asc-init`` event.
+
+ * ``client.connections`` resolves to the array of all connections to the app as objects of ``.src`` and ``.dst``  
+ * ``client.socket`` resolves to the main socket to which the autostart-server will forward its connections. This is equivalent to ``(await client.connections)[0].dst``
+ * ``client.data`` contains further custom data coming from the app description.
